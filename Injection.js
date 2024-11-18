@@ -198,7 +198,6 @@ function modifyCode(text) {
 
     // FINAL MODIFICATION CALL
     modifyCode(''); // Modify the code with all changes applied
-
 })();
 
 	// SKIN
