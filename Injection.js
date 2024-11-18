@@ -33,18 +33,18 @@ function addDump(replacement, code) {
 }
 
 function modifyCode(text) {
-    for(const [name, regex] of Object.entries(dumpedVarNames)){
+    for (const [name, regex] of Object.entries(dumpedVarNames)) {
         const matched = text.match(regex);
         if (matched) {
             console.log(name, regex, matched);
-            for(const [replacement, code] of Object.entries(replacements)){
+            for (const [replacement, code] of Object.entries(replacements)) {
                 delete replacements[replacement];
                 replacements[replacement.replaceAll(name, matched[1])] = [code[0].replaceAll(name, matched[1]), code[1]];
             }
         }
     }
 
-    for(const [replacement, code] of Object.entries(replacements)){
+    for (const [replacement, code] of Object.entries(replacements)) {
         text = text.replaceAll(replacement, code[1] ? code[0] : replacement + code[0]);
     }
 
@@ -70,7 +70,7 @@ function modifyCode(text) {
     addDump('attackDump', 'hitVec.z\}\\)\}\\)\\),player\\$1\.([a-zA-Z]*)');
     addDump('lastReportedYawDump', 'this\.([a-zA-Z]*)=this\.yaw,this\.last');
     addDump('windowClickDump', '([a-zA-Z]*)\\(this\.inventorySlots\.windowId');
-    addDump('playerControllerDump', 'const ([a-zA-Z]*)=new PlayerController,');
+    addDump('playerControllerDump', 'const ([a-zALetter]*)=new PlayerController,');
     addDump('damageReduceAmountDump', 'ItemArmor&&\\(tt\\+\\=it\.([a-zA-Z]*)');
     addDump('boxGeometryDump', 'ot=new Mesh\\(new ([a-zA-Z]*)\\(1');
     addDump('syncItemDump', 'playerControllerMP\.([a-zA-Z]*)\\(\\),ClientSocket\.sendPacket');
@@ -104,8 +104,8 @@ function modifyCode(text) {
         let chatDelay = Date.now();
 
         function getModule(str) {
-            for(const [name, module] of Object.entries(modules)) {
-                if (name.toLocaleLowerCase() == str.toLocaleLowerCase()) return module;
+            for (const [name, module] of Object.entries(modules)) {
+                if (name.toLowerCase() === str.toLowerCase()) return module;
             }
         }
 
@@ -180,20 +180,11 @@ function modifyCode(text) {
         popup.style.color = "white";
         popup.style.padding = "10px";
         popup.style.borderRadius = "5px";
-        popup.style.fontFamily = "Roboto, sans-serif";
-        popup.style.fontSize = "14px";
-        popup.style.zIndex = "9999";
-        popup.innerText = `${moduleName} has been ${isEnabled ? "enabled" : "disabled"}`;
+        popup.innerText = `${moduleName} is ${isEnabled ? "enabled" : "disabled"}`;
         document.body.appendChild(popup);
         setTimeout(() => {
-            document.body.removeChild(popup);
+            popup.remove();
         }, 3000);
-    }
-
-    function toggleModule(moduleName) {
-        enabledModules[moduleName] = !enabledModules[moduleName];
-        updateModuleStatus();
-        displayBindPopup(moduleName, enabledModules[moduleName]);
     }
 
     // FINAL MODIFICATION CALL
