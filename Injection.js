@@ -70,7 +70,7 @@ function modifyCode(text) {
     addDump('attackDump', 'hitVec.z\}\\)\}\\)\\),player\\$1\.([a-zA-Z]*)');
     addDump('lastReportedYawDump', 'this\.([a-zA-Z]*)=this\.yaw,this\.last');
     addDump('windowClickDump', '([a-zA-Z]*)\\(this\.inventorySlots\.windowId');
-    addDump('playerControllerDump', 'const ([a-zALetter]*)=new PlayerController,');
+    addDump('playerControllerDump', 'const ([a-zA-Z]*)=new PlayerController,');
     addDump('damageReduceAmountDump', 'ItemArmor&&\\(tt\\+\\=it\.([a-zA-Z]*)');
     addDump('boxGeometryDump', 'ot=new Mesh\\(new ([a-zA-Z]*)\\(1');
     addDump('syncItemDump', 'playerControllerMP\.([a-zA-Z]*)\\(\\),ClientSocket\.sendPacket');
@@ -119,11 +119,13 @@ function modifyCode(text) {
     `);
 
     addReplacement('VERSION$1," | ",', `"${vapeName} v1.0.5"," | ",`);
+
     addReplacement('if(!nt.canConnect){', 'nt.errorMessage = nt.errorMessage == "Could not join server. You are connected to a VPN or proxy. Please disconnect from it and refresh the page." ? "You\'re either using a detected VPN server or IP banned for cheating." : nt.errorMessage;');
 
     // DRAWING SETUP
     addReplacement('ut(this,"glintTexture");', '');
     addReplacement('ut(this,"vapeTexture");', '');
+
     addReplacement('skinManager.loadTextures(),', ',this.loadVape(),');
     addReplacement('async loadSpritesheet(){', `
         async loadVape() {
@@ -133,6 +135,7 @@ function modifyCode(text) {
         async loadSpritesheet(){
     `, true);
 
+    // PACKET V69 UI
     const packetText = document.createElement("div");
     packetText.innerText = "Packet v69";
 
@@ -152,109 +155,52 @@ function modifyCode(text) {
     link.rel = "stylesheet";
     document.head.appendChild(link);
 
-    // TELEPORT FIX
-    addReplacement('player$1.setPositionAndRotation($.x,$.y,$.z,$.yaw,$.pitch),', `
-        noMove = Date.now() + 500;
-        player$1.setPositionAndRotation($.x,$.y,$.z,$.yaw,$.pitch),
-    `, true);
+    // MODULE TOGGLE HANDLING
+    let enabledModules = {};
 
-    addReplacement('COLOR_TOOLTIP_BG,BORDER_SIZE)}', `
-        function drawImage(ctx, img, posX, posY, sizeX, sizeY, color) {
-            if (color) {
-                ctx.fillStyle = color;
-                ctx.fillRect(posX, posY, sizeX, sizeY);
-                ctx.globalCompositeOperation = "destination-in";
+    function updateModuleStatus() {
+        const packetText = document.querySelector("#packetText");
+        let statusText = "Packet v69\n";
+        for (const [moduleName, isEnabled] of Object.entries(enabledModules)) {
+            if (isEnabled) {
+                statusText += `${moduleName} (ON)\n`;
+            } else {
+                statusText += `${moduleName} (OFF)\n`;
             }
-            ctx.drawImage(img, posX, posY, sizeX, sizeY);
-            if (color) ctx.globalCompositeOperation = "source-over";
         }
-    `);
+        packetText.innerText = statusText;
+    }
 
-    // TEXT GUI
-    addReplacement('(this.drawSelectedItemStack(),this.drawHintBox())', `
-        let stringList = [];
-        Object.entries(enabledModules).forEach(([moduleName, isEnabled]) => {
-            if (isEnabled) stringList.push(moduleName);
-        });
+    function displayBindPopup(moduleName, isEnabled) {
+        const popup = document.createElement("div");
+        popup.style.position = "absolute";
+        popup.style.bottom = "20px";
+        popup.style.right = "20px";
+        popup.style.backgroundColor = isEnabled ? "green" : "red";
+        popup.style.color = "white";
+        popup.style.padding = "10px";
+        popup.style.borderRadius = "5px";
+        popup.style.fontFamily = "Roboto, sans-serif";
+        popup.style.fontSize = "14px";
+        popup.style.zIndex = "9999";
+        popup.innerText = `${moduleName} has been ${isEnabled ? "enabled" : "disabled"}`;
+        document.body.appendChild(popup);
+        setTimeout(() => {
+            document.body.removeChild(popup);
+        }, 3000);
+    }
 
-        let posX = 10;
-        let posY = 10;
-        let offset = 0;
+    function toggleModule(moduleName) {
+        enabledModules[moduleName] = !enabledModules[moduleName];
+        updateModuleStatus();
+        displayBindPopup(moduleName, enabledModules[moduleName]);
+    }
 
-        if (stringList.length > 0) {
-            ctx$3.fillStyle = "#00FF00";
-            ctx$3.font = "16px Roboto";
-            stringList.forEach(function(moduleName) {
-                ctx$3.fillText(moduleName, posX + 75 + offset, posY + 17);
-                offset += ctx$3.measureText(moduleName).width + 5;
-            });
-        }
-    `);
+    // FINAL MODIFICATION CALL
+    modifyCode(''); // Modify the code with all changes applied
 
-           // Final code to close out the script properly
-        );
-        const packetText = document.createElement("div");
-        packetText.innerText = "Packet v69";
-        packetText.style.position = "absolute";
-        packetText.style.top = "10px";
-        packetText.style.left = "10px";
-        packetText.style.fontFamily = "Roboto, sans-serif";
-        packetText.style.fontSize = "24px";
-        packetText.style.color = "#00FF00";
-        packetText.style.textShadow = "0 0 10px rgba(0, 255, 0, 0.7)";
-        packetText.style.fontWeight = "bold";
-        document.body.appendChild(packetText);
-
-        const link = document.createElement("link");
-        link.href = "https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap";
-        link.rel = "stylesheet";
-        document.head.appendChild(link);
-
-        // MODULE MANAGEMENT AND FINAL TOUCHES
-        let enabledModules = {};
-
-        function updateModuleStatus() {
-            const packetText = document.querySelector("#packetText");
-            let statusText = "Packet v69\n";
-            for (const [moduleName, isEnabled] of Object.entries(enabledModules)) {
-                if (isEnabled) {
-                    statusText += `${moduleName} (ON)\n`;
-                } else {
-                    statusText += `${moduleName} (OFF)\n`;
-                }
-            }
-            packetText.innerText = statusText;
-        }
-
-        function displayBindPopup(moduleName, isEnabled) {
-            const popup = document.createElement("div");
-            popup.style.position = "absolute";
-            popup.style.bottom = "20px";
-            popup.style.right = "20px";
-            popup.style.backgroundColor = isEnabled ? "green" : "red";
-            popup.style.color = "white";
-            popup.style.padding = "10px";
-            popup.style.borderRadius = "5px";
-            popup.style.fontFamily = "Roboto, sans-serif";
-            popup.style.fontSize = "14px";
-            popup.style.zIndex = "9999";
-            popup.innerText = `${moduleName} has been ${isEnabled ? "enabled" : "disabled"}`;
-            document.body.appendChild(popup);
-            setTimeout(() => {
-                document.body.removeChild(popup);
-            }, 3000);
-        }
-
-        function toggleModule(moduleName) {
-            enabledModules[moduleName] = !enabledModules[moduleName];
-            updateModuleStatus();
-            displayBindPopup(moduleName, enabledModules[moduleName]);
-        }
-
-        // FINALLY: CALLING THE MODULE SCRIPT EXECUTION
-        modifyCode(''); // This will run the script injection with the modifications applied.
-    })();
 })();
+
 	// SKIN
 	addReplacement('ClientSocket.on("CPacketSpawnPlayer",$=>{const et=j.world.getPlayerById($.id);', `
 		if ($.socketId === player$1.socketId && enabledModules["AntiBan"]) {
