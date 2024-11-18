@@ -5,191 +5,371 @@ const vapeName = crypto.randomUUID().replaceAll("-", "").substring(16);
 
 // ANTICHEAT HOOK
 function replaceAndCopyFunction(oldFunc, newFunc) {
-    return new Proxy(oldFunc, {
-        apply(orig, origIden, origArgs) {
-            const result = orig.apply(origIden, origArgs);
-            newFunc(result);
-            return result;
-        },
-        get(orig) { return orig; }
-    });
+	return new Proxy(oldFunc, {
+		apply(orig, origIden, origArgs) {
+			const result = orig.apply(origIden, origArgs);
+			newFunc(result);
+			return result;
+		},
+		get(orig) { return orig; }
+	});
 }
 
 Object.getOwnPropertyNames = replaceAndCopyFunction(Object.getOwnPropertyNames, function(list) {
-    if (list.indexOf(storeName) != -1) list.splice(list.indexOf(storeName), 1);
-    return list;
+	if (list.indexOf(storeName) != -1) list.splice(list.indexOf(storeName), 1);
+	return list;
 });
 Object.getOwnPropertyDescriptors = replaceAndCopyFunction(Object.getOwnPropertyDescriptors, function(list) {
-    delete list[storeName];
-    return list;
+	delete list[storeName];
+	return list;
 });
 
 function addReplacement(replacement, code, replaceit) {
-    replacements[replacement] = [code, replaceit];
+	replacements[replacement] = [code, replaceit];
 }
 
 function addDump(replacement, code) {
-    dumpedVarNames[replacement] = code;
+	dumpedVarNames[replacement] = code;
 }
 
 function modifyCode(text) {
-    for (const [name, regex] of Object.entries(dumpedVarNames)) {
-        const matched = text.match(regex);
-        if (matched) {
-            console.log(name, regex, matched);
-            for (const [replacement, code] of Object.entries(replacements)) {
-                delete replacements[replacement];
-                replacements[replacement.replaceAll(name, matched[1])] = [code[0].replaceAll(name, matched[1]), code[1]];
-            }
-        }
-    }
+	for(const [name, regex] of Object.entries(dumpedVarNames)){
+		const matched = text.match(regex);
+		if (matched) {
+			console.log(name, regex, matched);
+			for(const [replacement, code] of Object.entries(replacements)){
+				delete replacements[replacement];
+				replacements[replacement.replaceAll(name, matched[1])] = [code[0].replaceAll(name, matched[1]), code[1]];
+			}
+		}
+	}
 
-    for (const [replacement, code] of Object.entries(replacements)) {
-        text = text.replaceAll(replacement, code[1] ? code[0] : replacement + code[0]);
-    }
+	for(const [replacement, code] of Object.entries(replacements)){
+		text = text.replaceAll(replacement, code[1] ? code[0] : replacement + code[0]);
+	}
 
-    var newScript = document.createElement("script");
-    newScript.type = "module";
-    newScript.crossOrigin = "";
-    newScript.textContent = text;
-    var head = document.querySelector("head");
-    head.appendChild(newScript);
-    newScript.textContent = "";
-    newScript.remove();
+	var newScript = document.createElement("script");
+	newScript.type = "module";
+	newScript.crossOrigin = "";
+	newScript.textContent = text;
+	var head = document.querySelector("head");
+	head.appendChild(newScript);
+	newScript.textContent = "";
+	newScript.remove();
 }
 
 (function() {
-    'use strict';
+	'use strict';
 
-    // DUMPING
-    addDump('moveStrafeDump', 'strafe:this\.([a-zA-Z]*)');
-    addDump('moveForwardDump', 'forward:this\.([a-zA-Z]*)');
-    addDump('keyPressedDump', 'function ([a-zA-Z]*)\\(j\\)\{return keyPressed\\(j\\)');
-    addDump('entitiesDump', 'this\.([a-zA-Z]*)\.values\\(\\)\\)nt instanceof EntityTNTPrimed');
-    addDump('isInvisibleDump', 'ot\.([a-zA-Z]*)\\(\\)\\)&&\\(pt=new ([a-zA-Z]*)\\(new');
-    addDump('attackDump', 'hitVec.z\}\\)\}\\)\\),player\\$1\.([a-zA-Z]*)');
-    addDump('lastReportedYawDump', 'this\.([a-zA-Z]*)=this\.yaw,this\.last');
-    addDump('windowClickDump', '([a-zA-Z]*)\\(this\.inventorySlots\.windowId');
-    addDump('playerControllerDump', 'const ([a-zALetter]*)=new PlayerController,');
-    addDump('damageReduceAmountDump', 'ItemArmor&&\\(tt\\+\\=it\.([a-zA-Z]*)');
-    addDump('boxGeometryDump', 'ot=new Mesh\\(new ([a-zA-Z]*)\\(1');
-    addDump('syncItemDump', 'playerControllerMP\.([a-zA-Z]*)\\(\\),ClientSocket\.sendPacket');
+	// DUMPING
+	addDump('moveStrafeDump', 'strafe:this\.([a-zA-Z]*)');
+	addDump('moveForwardDump', 'forward:this\.([a-zA-Z]*)');
+	addDump('keyPressedDump', 'function ([a-zA-Z]*)\\(j\\)\{return keyPressed\\(j\\)');
+	addDump('entitiesDump', 'this\.([a-zA-Z]*)\.values\\(\\)\\)nt instanceof EntityTNTPrimed');
+	addDump('isInvisibleDump', 'ot\.([a-zA-Z]*)\\(\\)\\)&&\\(pt=new ([a-zA-Z]*)\\(new');
+	addDump('attackDump', 'hitVec.z\}\\)\}\\)\\),player\\$1\.([a-zA-Z]*)');
+	addDump('lastReportedYawDump', 'this\.([a-zA-Z]*)=this\.yaw,this\.last');
+	addDump('windowClickDump', '([a-zA-Z]*)\\(this\.inventorySlots\.windowId');
+	addDump('playerControllerDump', 'const ([a-zA-Z]*)=new PlayerController,');
+	addDump('damageReduceAmountDump', 'ItemArmor&&\\(tt\\+\\=it\.([a-zA-Z]*)');
+	addDump('boxGeometryDump', 'ot=new Mesh\\(new ([a-zA-Z]*)\\(1');
+	addDump('syncItemDump', 'playerControllerMP\.([a-zA-Z]*)\\(\\),ClientSocket\.sendPacket');
 
-    // PRE
-    addReplacement('document.addEventListener("DOMContentLoaded",startGame,!1);', `
-        setTimeout(function() {
-            var DOMContentLoaded_event = document.createEvent("Event");
-            DOMContentLoaded_event.initEvent("DOMContentLoaded", true, true);
-            document.dispatchEvent(DOMContentLoaded_event);
-        }, 0);
-    `);
+	// PRE
+	addReplacement('document.addEventListener("DOMContentLoaded",startGame,!1);', `
+		setTimeout(function() {
+			var DOMContentLoaded_event = document.createEvent("Event");
+			DOMContentLoaded_event.initEvent("DOMContentLoaded", true, true);
+			document.dispatchEvent(DOMContentLoaded_event);
+		}, 0);
+	`);
 
-    addReplacement('Potions.jump.getId(),"5");', `
-        let blocking = false;
-        let sendYaw = false;
-        let breakStart = Date.now();
-        let noMove = Date.now();
+	addReplacement('Potions.jump.getId(),"5");', `
+		let blocking = false;
+		let sendYaw = false;
+		let breakStart = Date.now();
+		let noMove = Date.now();
 
-        let enabledModules = {};
-        let modules = {};
+		let enabledModules = {};
+		let modules = {};
 
-        let keybindCallbacks = {};
-        let keybindList = {};
+		let keybindCallbacks = {};
+		let keybindList = {};
 
-        let tickLoop = {};
-        let renderTickLoop = {};
+		let tickLoop = {};
+		let renderTickLoop = {};
 
-        let lastJoined, velocityhori, velocityvert, chatdisablermsg, textguifont, textguisize, textguishadow, attackedEntity, stepheight;
-        let attackTime = Date.now();
-        let chatDelay = Date.now();
+		let lastJoined, velocityhori, velocityvert, chatdisablermsg, textguifont, textguisize, textguishadow, attackedEntity, stepheight;
+		let attackTime = Date.now();
+		let chatDelay = Date.now();
 
-        function getModule(str) {
-            for (const [name, module] of Object.entries(modules)) {
-                if (name.toLowerCase() === str.toLowerCase()) return module;
-            }
-        }
+		function getModule(str) {
+			for(const [name, module] of Object.entries(modules)) {
+				if (name.toLocaleLowerCase() == str.toLocaleLowerCase()) return module;
+			}
+		}
 
-        let j;
-        for (j = 0; j < 26; j++) keybindList[j + 65] = keybindList["Key" + String.fromCharCode(j + 65)] = String.fromCharCode(j + 97);
-        for (j = 0; j < 10; j++) keybindList[48 + j] = keybindList["Digit" + j] = "" + j;
-        window.addEventListener("keydown", function(key) {
-            const func = keybindCallbacks[keybindList[key.code]];
-            call$1(func, key);
-        });
-    `);
+		let j;
+		for (j = 0; j < 26; j++) keybindList[j + 65] = keybindList["Key" + String.fromCharCode(j + 65)] = String.fromCharCode(j + 97);
+		for (j = 0; j < 10; j++) keybindList[48 + j] = keybindList["Digit" + j] = "" + j;
+		window.addEventListener("keydown", function(key) {
+			const func = keybindCallbacks[keybindList[key.code]];
+			call$1(func, key);
+		});
+	`);
 
-    addReplacement('VERSION$1," | ",', `"${vapeName} v1.0.5"," | ",`);
+	addReplacement('VERSION$1," | ",', `"${vapeName} v1.0.5"," | ",`);
+	addReplacement('if(!nt.canConnect){', 'nt.errorMessage = nt.errorMessage == "Could not join server. You are connected to a VPN or proxy. Please disconnect from it and refresh the page." ? "You\'re either using a detected VPN server or IP banned for cheating." : nt.errorMessage;');
 
-    addReplacement('if(!nt.canConnect){', 'nt.errorMessage = nt.errorMessage == "Could not join server. You are connected to a VPN or proxy. Please disconnect from it and refresh the page." ? "You\'re either using a detected VPN server or IP banned for cheating." : nt.errorMessage;');
-
-    // DRAWING SETUP
-    addReplacement('ut(this,"glintTexture");', '');
-    addReplacement('ut(this,"vapeTexture");', '');
-
-    addReplacement('skinManager.loadTextures(),', ',this.loadVape(),');
-    addReplacement('async loadSpritesheet(){', `
-        async loadVape() {
-            this.vapeTexture = await this.loader.loadAsync("https://raw.githubusercontent.com/7GrandDadPGN/VapeForMiniblox/main/assets/logo.png");
-            this.v4Texture = await this.loader.loadAsync("https://raw.githubusercontent.com/7GrandDadPGN/VapeForMiniblox/main/assets/logov4.png");
-        }
-        async loadSpritesheet(){
-    `, true);
-
-    // PACKET V69 UI
-    const packetText = document.createElement("div");
-    packetText.innerText = "Packet v69";
-
-    packetText.style.position = "absolute";
-    packetText.style.top = "10px";
-    packetText.style.left = "10px";
-    packetText.style.fontFamily = "Roboto, sans-serif";
-    packetText.style.fontSize = "24px";
-    packetText.style.color = "#00FF00";
-    packetText.style.textShadow = "0 0 10px rgba(0, 255, 0, 0.7)";
-    packetText.style.fontWeight = "bold";
-
-    document.body.appendChild(packetText);
-
-    const link = document.createElement("link");
-    link.href = "https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap";
-    link.rel = "stylesheet";
-    document.head.appendChild(link);
-
-    // MODULE TOGGLE HANDLING
-    let enabledModules = {};
-
-    function updateModuleStatus() {
-        const packetText = document.querySelector("#packetText");
-        let statusText = "Packet v69\n";
-        for (const [moduleName, isEnabled] of Object.entries(enabledModules)) {
-            if (isEnabled) {
-                statusText += `${moduleName} (ON)\n`;
-            } else {
-                statusText += `${moduleName} (OFF)\n`;
-            }
-        }
-        packetText.innerText = statusText;
+	// DRAWING SETUP
+addReplacement('ut(this,"glintTexture");', '');
+addReplacement('ut(this,"vapeTexture");', '');
+addReplacement('skinManager.loadTextures(),', ',this.loadVape(),');
+addReplacement('async loadSpritesheet(){', `
+    async loadVape() {
+        this.vapeTexture = await this.loader.loadAsync("https://raw.githubusercontent.com/7GrandDadPGN/VapeForMiniblox/main/assets/logo.png");
+        this.v4Texture = await this.loader.loadAsync("https://raw.githubusercontent.com/7GrandDadPGN/VapeForMiniblox/main/assets/logov4.png");
     }
+    async loadSpritesheet(){
+`, true);
 
-    function displayBindPopup(moduleName, isEnabled) {
-        const popup = document.createElement("div");
-        popup.style.position = "absolute";
-        popup.style.bottom = "20px";
-        popup.style.right = "20px";
-        popup.style.backgroundColor = isEnabled ? "green" : "red";
-        popup.style.color = "white";
-        popup.style.padding = "10px";
-        popup.style.borderRadius = "5px";
-        popup.innerText = `${moduleName} is ${isEnabled ? "enabled" : "disabled"}`;
-        document.body.appendChild(popup);
-        setTimeout(() => {
-            popup.remove();
-        }, 3000);
-    }
+const packetText = document.createElement("div");
+packetText.innerText = "Packet v69";
 
-    // FINAL MODIFICATION CALL
-    modifyCode(''); // Modify the code with all changes applied
-})();
+packetText.style.position = "absolute";
+packetText.style.top = "10px";
+packetText.style.left = "10px";
+packetText.style.fontFamily = "Roboto, sans-serif";
+packetText.style.fontSize = "24px";
+packetText.style.color = "#00FF00";
+packetText.style.textShadow = "0 0 10px rgba(0, 255, 0, 0.7)";
+packetText.style.fontWeight = "bold";
+
+document.body.appendChild(packetText);
+
+const subtitleText = document.createElement("div");
+subtitleText.innerText = "Private";
+
+subtitleText.style.position = "absolute";
+subtitleText.style.top = "40px";
+subtitleText.style.left = "10px";
+subtitleText.style.fontFamily = "Roboto, sans-serif";
+subtitleText.style.fontSize = "16px";
+subtitleText.style.color = "red";
+subtitleText.style.fontWeight = "bold";
+
+document.body.appendChild(subtitleText);
+
+const link = document.createElement("link");
+link.href = "https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap";
+link.rel = "stylesheet";
+document.head.appendChild(link);
+
+	// TELEPORT FIX
+	addReplacement('player$1.setPositionAndRotation($.x,$.y,$.z,$.yaw,$.pitch),', `
+		noMove = Date.now() + 500;
+		player$1.setPositionAndRotation($.x,$.y,$.z,$.yaw,$.pitch),
+	`, true);
+
+	addReplacement('COLOR_TOOLTIP_BG,BORDER_SIZE)}', `
+		function drawImage(ctx, img, posX, posY, sizeX, sizeY, color) {
+			if (color) {
+				ctx.fillStyle = color;
+				ctx.fillRect(posX, posY, sizeX, sizeY);
+				ctx.globalCompositeOperation = "destination-in";
+			}
+			ctx.drawImage(img, posX, posY, sizeX, sizeY);
+			if (color) ctx.globalCompositeOperation = "source-over";
+		}
+	`);
+
+	// TEXT GUI
+	addReplacement('(this.drawSelectedItemStack(),this.drawHintBox())', `
+		if (ctx$3 && enabledModules["TextGUI"]) {
+			const colorOffset = (Date.now() / 4000);
+			const posX = 15;
+			const posY = 17;
+			ctx$3.imageSmoothingEnabled = true;
+			ctx$3.imageSmoothingQuality = "high";
+			drawImage(ctx$3, textureManager.vapeTexture.image, posX, posY, 80, 21, \`HSL(\${(colorOffset % 1) * 360}, 100%, 50%)\`);
+			drawImage(ctx$3, textureManager.v4Texture.image, posX + 81, posY + 1, 33, 18);
+
+			let offset = 0;
+			let stringList = [];
+			for(const [module, value] of Object.entries(enabledModules)) {
+				if (!value || module == "TextGUI") continue;
+				stringList.push(module);
+			}
+
+			stringList.sort(function(a, b) {
+				const compA = ctx$3.measureText(a).width;
+				const compB = ctx$3.measureText(b).width;
+				return compA < compB ? 1 : -1;
+			});
+
+			for(const module of stringList) {
+				offset++;
+				drawText(ctx$3, module, posX + 6, posY + 12 + ((textguisize[1] + 3) * offset), textguisize[1] + "px " + textguifont[1], \`HSL(\${((colorOffset - (0.025 * offset)) % 1) * 360}, 100%, 50%)\`, "left", "top", 1, textguishadow[1]);
+			}
+		}
+	`);
+
+	// HOOKS
+	addReplacement('+=$*rt+_*nt}', `
+		if (this == player$1) {
+			for(const [index, func] of Object.entries(tickLoop)) if (func) func();
+		}
+	`);
+	addReplacement('this.game.unleash.isEnabled("disable-ads")', 'true', true);
+	addReplacement('$.render()})', '; for(const [index, func] of Object.entries(renderTickLoop)) if (func) func();');
+	addReplacement('updateNameTag(){let$="white",et = 1;', 'this.entity.team = this.entity.profile.cosmetics.color;');
+	addReplacement('connect(_,$=!1,et=!1){', 'lastJoined = _;');
+	addReplacement('SliderOption("Render Distance ",2,8,3)', 'SliderOption("Render Distance ",2,64,3)', true);
+	addReplacement('ClientSocket.on("CPacketDisconnect",$=>{', `
+		if (enabledModules["AutoRejoin"]) {
+			setTimeout(function() {
+				j.connect(lastJoined);
+			}, 400);
+		}
+	`);
+	addReplacement('ClientSocket.on("CPacketMessage",$=>{', `
+		if (player$1 && $.text && !$.text.startsWith(player$1.name) && enabledModules["ChatDisabler"] && chatDelay < Date.now()) {
+			chatDelay = Date.now() + 1000;
+			setTimeout(function() {
+				ClientSocket.sendPacket(new SPacketMessage({text: Math.random() + ("\\n" + chatdisablermsg[1]).repeat(20)}));
+			}, 50);
+		}
+
+		if ($.text && $.text.startsWith("\\\\bold\\\\How to play:")) {
+			breakStart = Date.now() + 25000;
+		}
+
+		if ($.text && $.text.indexOf("Poll started") != -1 && $.id == undefined && enabledModules["AutoVote"]) {
+			ClientSocket.sendPacket(new SPacketMessage({text: "/vote 2"}));
+		}
+
+		if ($.text && $.text.indexOf("won the game") != -1 && $.id == undefined && enabledModules["AutoQueue"]) {
+			game$1.requestQueue();
+		}
+	`);
+	addReplacement('ClientSocket.on("CPacketUpdateStatus",$=>{', `
+		if ($.rank && $.rank != "" && RANK.LEVEL[$.rank].permLevel > 2) {
+			game$1.chat.addChat({
+				text: "STAFF DETECTED : " + $.rank + "\\n".repeat(10),
+				color: "red"
+			});
+		}
+	`);
+
+	// REBIND
+	addReplacement('bindKeysWithDefaults("b",j=>{', 'bindKeysWithDefaults("semicolon",j=>{', true);
+	addReplacement('bindKeysWithDefaults("i",j=>{', 'bindKeysWithDefaults("apostrophe",j=>{', true);
+
+	// SPRINT
+	addReplacement('at=keyPressedDump("shift")||touchcontrols.sprinting', '||enabledModules["Sprint"]');
+
+	// VELOCITY
+	addReplacement('"CPacketEntityVelocity",$=>{const et=j.world.entitiesDump.get($.id);', `
+		if (player$1 && $.id == player$1.id && enabledModules["Velocity"]) {
+			if (velocityhori[1] == 0 && velocityvert[1] == 0) return;
+			$.motion = new Vector3$1($.motion.x * velocityhori[1], $.motion.y * velocityvert[1], $.motion.z * velocityhori[1]);
+		}
+	`);
+	addReplacement('"CPacketExplosion",$=>{', `
+		if ($.playerPos && enabledModules["Velocity"]) {
+			if (velocityhori[1] == 0 && velocityvert[1] == 0) return;
+			$.playerPos = new Vector3$1($.playerPos.x * velocityhori[1], $.playerPos.y * velocityvert[1], $.playerPos.z * velocityhori[1]);
+		}
+	`);
+
+	// KEEPSPRINT
+	addReplacement('tt>0&&($.addVelocity(-Math.sin(this.yaw)*tt*.5,.1,-Math.cos(this.yaw)*tt*.5),this.motion.x*=.6,this.motion.z*=.6,this.setSprinting(!1)),', `
+		if (tt > 0) {
+			$.addVelocity(-Math.sin(this.yaw) * tt * .5, .1, -Math.cos(this.yaw) * tt * .5);
+			if (this != player$1 || !enabledModules["KeepSprint"]) {
+				this.motion.x *= .6;
+				this.motion.z *= .6;
+				this.setSprinting(!1);
+			}
+		}
+	`, true);
+
+	// KILLAURA
+	addReplacement('else player$1.isBlocking()?', 'else (player$1.isBlocking() || blocking)?', true);
+	addReplacement('this.entity.isBlocking()', '(this.entity.isBlocking() || this.entity == player$1 && blocking)', true);
+	addReplacement('const nt={onGround:this.onGround}', `, realYaw = sendYaw || this.yaw`);
+	addReplacement('this.yaw-this.', 'realYaw-this.', true);
+	addReplacement('nt.yaw=player.yaw', 'nt.yaw=realYaw', true);
+	addReplacement('this.lastReportedYawDump=this.yaw,', 'this.lastReportedYawDump=realYaw,', true);
+	addReplacement('this.neck.rotation.y=controls$1.yaw', 'this.neck.rotation.y=(sendYaw||controls$1.yaw)', true);
+
+	// NOSLOWDOWN
+	addReplacement('const $=this.jumping,et=this.sneak,tt=-.8,rt=this.moveForwardDump<=tt;', `
+		const slowdownCheck = this.isUsingItem() && !enabledModules["NoSlowdown"];
+	`);
+	addReplacement('updatePlayerMoveState(),this.isUsingItem()', 'updatePlayerMoveState(),slowdownCheck', true);
+	addReplacement('it&&!this.isUsingItem()', 'it&&!slowdownCheck', true);
+	addReplacement('0),this.sneak', ' && !enabledModules["NoSlowdown"]');
+
+	// STEP
+	addReplacement('et.y=this.stepHeight;', 'et.y=(enabledModules["Step"]?Math.max(stepheight[1],this.stepHeight):this.stepHeight);', true);
+
+	// WTAP
+	addReplacement('this.dead||this.getHealth()<=0)return;', `
+		if (enabledModules["WTap"]) player$1.serverSprintState = false;
+	`);
+
+	// INVWALK
+	addReplacement('keyPressed(j)&&Game.isActive(!1)', 'keyPressed(j)&&(Game.isActive(!1)||enabledModules["InvWalk"]&&!game.chat.showInput)', true);
+
+	// TIMER
+	addReplacement('MSPT=50,', '', true);
+	addReplacement('MODE="production";', 'let MSPT = 50;');
+	addReplacement('ut(this,"controller");', 'ut(this, "tickLoop");');
+	addReplacement('setInterval(()=>this.fixedUpdate(),MSPT)', 'this.tickLoop=setInterval(()=>this.fixedUpdate(),MSPT)', true);
+
+	// PHASE
+	addReplacement('calculateXOffset(ft,this.getEntityBoundingBox(),tt.x)', 'enabledModules["Phase"] ? tt.x : calculateXOffset(ft,this.getEntityBoundingBox(),tt.x)', true);
+	addReplacement('calculateYOffset(ft,this.getEntityBoundingBox(),tt.y)', 'enabledModules["Phase"] && keyPressedDump("shift") ? tt.y : calculateYOffset(ft,this.getEntityBoundingBox(),tt.y)', true);
+	addReplacement('calculateZOffset(ft,this.getEntityBoundingBox(),tt.z)', 'enabledModules["Phase"] ? tt.z : calculateZOffset(ft,this.getEntityBoundingBox(),tt.z)', true);
+	addReplacement('pushOutOfBlocks(_,$,et){', 'if (enabledModules["Phase"]) return;');
+
+	// AUTORESPAWN
+	addReplacement('this.game.info.showSignEditor=null,exitPointerLock())', `
+		if (this.showDeathScreen && enabledModules["AutoRespawn"]) {
+			ClientSocket.sendPacket(new SPacketRespawn$1);
+		}
+	`);
+
+	// CHAMS
+	addReplacement(')&&(et.mesh.visible=this.shouldRenderEntity(et))', `
+		if (enabledModules["Chams"] && et && et.id != player$1.id) {
+			for(const mesh in et.mesh.meshes) {
+				et.mesh.meshes[mesh].material.depthTest = false;
+				et.mesh.meshes[mesh].renderOrder = 3;
+			}
+
+			for(const mesh in et.mesh.armorMesh) {
+				et.mesh.armorMesh[mesh].material.depthTest = false;
+				et.mesh.armorMesh[mesh].renderOrder = 4;
+			}
+
+			if (et.mesh.capeMesh) {
+				et.mesh.capeMesh.children[0].material.depthTest = false;
+				et.mesh.capeMesh.children[0].renderOrder = 5;
+			}
+
+			if (et.mesh.hatMesh) {
+				for(const mesh of et.mesh.hatMesh.children[0].children) {
+					if (!mesh.material) continue;
+					mesh.material.depthTest = false;
+					mesh.renderOrder = 4;
+				}
+			}
+		}
+	`);
+
+
 
 	// SKIN
 	addReplacement('ClientSocket.on("CPacketSpawnPlayer",$=>{const et=j.world.getPlayerById($.id);', `
