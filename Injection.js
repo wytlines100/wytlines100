@@ -5,249 +5,256 @@ const vapeName = crypto.randomUUID().replaceAll("-", "").substring(16);
 
 // ANTICHEAT HOOK
 function replaceAndCopyFunction(oldFunc, newFunc) {
-	return new Proxy(oldFunc, {
-		apply(orig, origIden, origArgs) {
-			const result = orig.apply(origIden, origArgs);
-			newFunc(result);
-			return result;
-		},
-		get(orig) { return orig; }
-	});
+    return new Proxy(oldFunc, {
+        apply(orig, origIden, origArgs) {
+            const result = orig.apply(origIden, origArgs);
+            newFunc(result);
+            return result;
+        },
+        get(orig) { return orig; }
+    });
 }
 
 Object.getOwnPropertyNames = replaceAndCopyFunction(Object.getOwnPropertyNames, function(list) {
-	if (list.indexOf(storeName) != -1) list.splice(list.indexOf(storeName), 1);
-	return list;
+    if (list.indexOf(storeName) != -1) list.splice(list.indexOf(storeName), 1);
+    return list;
 });
 Object.getOwnPropertyDescriptors = replaceAndCopyFunction(Object.getOwnPropertyDescriptors, function(list) {
-	delete list[storeName];
-	return list;
+    delete list[storeName];
+    return list;
 });
 
 function addReplacement(replacement, code, replaceit) {
-	replacements[replacement] = [code, replaceit];
+    replacements[replacement] = [code, replaceit];
 }
 
 function addDump(replacement, code) {
-	dumpedVarNames[replacement] = code;
+    dumpedVarNames[replacement] = code;
 }
 
 function modifyCode(text) {
-	for(const [name, regex] of Object.entries(dumpedVarNames)){
-		const matched = text.match(regex);
-		if (matched) {
-			console.log(name, regex, matched);
-			for(const [replacement, code] of Object.entries(replacements)){
-				delete replacements[replacement];
-				replacements[replacement.replaceAll(name, matched[1])] = [code[0].replaceAll(name, matched[1]), code[1]];
-			}
-		}
-	}
+    for(const [name, regex] of Object.entries(dumpedVarNames)){
+        const matched = text.match(regex);
+        if (matched) {
+            console.log(name, regex, matched);
+            for(const [replacement, code] of Object.entries(replacements)){
+                delete replacements[replacement];
+                replacements[replacement.replaceAll(name, matched[1])] = [code[0].replaceAll(name, matched[1]), code[1]];
+            }
+        }
+    }
 
-	for(const [replacement, code] of Object.entries(replacements)){
-		text = text.replaceAll(replacement, code[1] ? code[0] : replacement + code[0]);
-	}
+    for(const [replacement, code] of Object.entries(replacements)){
+        text = text.replaceAll(replacement, code[1] ? code[0] : replacement + code[0]);
+    }
 
-	var newScript = document.createElement("script");
-	newScript.type = "module";
-	newScript.crossOrigin = "";
-	newScript.textContent = text;
-	var head = document.querySelector("head");
-	head.appendChild(newScript);
-	newScript.textContent = "";
-	newScript.remove();
+    var newScript = document.createElement("script");
+    newScript.type = "module";
+    newScript.crossOrigin = "";
+    newScript.textContent = text;
+    var head = document.querySelector("head");
+    head.appendChild(newScript);
+    newScript.textContent = "";
+    newScript.remove();
 }
 
 (function() {
-	'use strict';
+    'use strict';
 
-	// DUMPING
-	addDump('moveStrafeDump', 'strafe:this\.([a-zA-Z]*)');
-	addDump('moveForwardDump', 'forward:this\.([a-zA-Z]*)');
-	addDump('keyPressedDump', 'function ([a-zA-Z]*)\\(j\\)\{return keyPressed\\(j\\)');
-	addDump('entitiesDump', 'this\.([a-zA-Z]*)\.values\\(\\)\\)nt instanceof EntityTNTPrimed');
-	addDump('isInvisibleDump', 'ot\.([a-zA-Z]*)\\(\\)\\)&&\\(pt=new ([a-zA-Z]*)\\(new');
-	addDump('attackDump', 'hitVec.z\}\\)\}\\)\\),player\\$1\.([a-zA-Z]*)');
-	addDump('lastReportedYawDump', 'this\.([a-zA-Z]*)=this\.yaw,this\.last');
-	addDump('windowClickDump', '([a-zA-Z]*)\\(this\.inventorySlots\.windowId');
-	addDump('playerControllerDump', 'const ([a-zA-Z]*)=new PlayerController,');
-	addDump('damageReduceAmountDump', 'ItemArmor&&\\(tt\\+\\=it\.([a-zA-Z]*)');
-	addDump('boxGeometryDump', 'ot=new Mesh\\(new ([a-zA-Z]*)\\(1');
-	addDump('syncItemDump', 'playerControllerMP\.([a-zA-Z]*)\\(\\),ClientSocket\.sendPacket');
+    // DUMPING
+    addDump('moveStrafeDump', 'strafe:this\.([a-zA-Z]*)');
+    addDump('moveForwardDump', 'forward:this\.([a-zA-Z]*)');
+    addDump('keyPressedDump', 'function ([a-zA-Z]*)\\(j\\)\{return keyPressed\\(j\\)');
+    addDump('entitiesDump', 'this\.([a-zA-Z]*)\.values\\(\\)\\)nt instanceof EntityTNTPrimed');
+    addDump('isInvisibleDump', 'ot\.([a-zA-Z]*)\\(\\)\\)&&\\(pt=new ([a-zA-Z]*)\\(new');
+    addDump('attackDump', 'hitVec.z\}\\)\}\\)\\),player\\$1\.([a-zA-Z]*)');
+    addDump('lastReportedYawDump', 'this\.([a-zA-Z]*)=this\.yaw,this\.last');
+    addDump('windowClickDump', '([a-zA-Z]*)\\(this\.inventorySlots\.windowId');
+    addDump('playerControllerDump', 'const ([a-zALetter]*)=new PlayerController,');
+    addDump('damageReduceAmountDump', 'ItemArmor&&\\(tt\\+\\=it\.([a-zA-Z]*)');
+    addDump('boxGeometryDump', 'ot=new Mesh\\(new ([a-zA-Z]*)\\(1');
+    addDump('syncItemDump', 'playerControllerMP\.([a-zA-Z]*)\\(\\),ClientSocket\.sendPacket');
 
-	// PRE
-	addReplacement('document.addEventListener("DOMContentLoaded",startGame,!1);', `
-		setTimeout(function() {
-			var DOMContentLoaded_event = document.createEvent("Event");
-			DOMContentLoaded_event.initEvent("DOMContentLoaded", true, true);
-			document.dispatchEvent(DOMContentLoaded_event);
-		}, 0);
-	`);
+    // PRE
+    addReplacement('document.addEventListener("DOMContentLoaded",startGame,!1);', `
+        setTimeout(function() {
+            var DOMContentLoaded_event = document.createEvent("Event");
+            DOMContentLoaded_event.initEvent("DOMContentLoaded", true, true);
+            document.dispatchEvent(DOMContentLoaded_event);
+        }, 0);
+    `);
 
-	addReplacement('Potions.jump.getId(),"5");', `
-		let blocking = false;
-		let sendYaw = false;
-		let breakStart = Date.now();
-		let noMove = Date.now();
+    addReplacement('Potions.jump.getId(),"5");', `
+        let blocking = false;
+        let sendYaw = false;
+        let breakStart = Date.now();
+        let noMove = Date.now();
 
-		let enabledModules = {};
-		let modules = {};
+        let enabledModules = {};
+        let modules = {};
 
-		let keybindCallbacks = {};
-		let keybindList = {};
+        let keybindCallbacks = {};
+        let keybindList = {};
 
-		let tickLoop = {};
-		let renderTickLoop = {};
+        let tickLoop = {};
+        let renderTickLoop = {};
 
-		let lastJoined, velocityhori, velocityvert, chatdisablermsg, textguifont, textguisize, textguishadow, attackedEntity, stepheight;
-		let attackTime = Date.now();
-		let chatDelay = Date.now();
+        let lastJoined, velocityhori, velocityvert, chatdisablermsg, textguifont, textguisize, textguishadow, attackedEntity, stepheight;
+        let attackTime = Date.now();
+        let chatDelay = Date.now();
 
-		function getModule(str) {
-			for(const [name, module] of Object.entries(modules)) {
-				if (name.toLocaleLowerCase() == str.toLocaleLowerCase()) return module;
-			}
-		}
+        function getModule(str) {
+            for(const [name, module] of Object.entries(modules)) {
+                if (name.toLocaleLowerCase() == str.toLocaleLowerCase()) return module;
+            }
+        }
 
-		let j;
-		for (j = 0; j < 26; j++) keybindList[j + 65] = keybindList["Key" + String.fromCharCode(j + 65)] = String.fromCharCode(j + 97);
-		for (j = 0; j < 10; j++) keybindList[48 + j] = keybindList["Digit" + j] = "" + j;
-		window.addEventListener("keydown", function(key) {
-			const func = keybindCallbacks[keybindList[key.code]];
-			call$1(func, key);
-		});
-	`);
+        let j;
+        for (j = 0; j < 26; j++) keybindList[j + 65] = keybindList["Key" + String.fromCharCode(j + 65)] = String.fromCharCode(j + 97);
+        for (j = 0; j < 10; j++) keybindList[48 + j] = keybindList["Digit" + j] = "" + j;
+        window.addEventListener("keydown", function(key) {
+            const func = keybindCallbacks[keybindList[key.code]];
+            call$1(func, key);
+        });
+    `);
 
-	addReplacement('VERSION$1," | ",', `"${vapeName} v1.0.5"," | ",`);
-	addReplacement('if(!nt.canConnect){', 'nt.errorMessage = nt.errorMessage == "Could not join server. You are connected to a VPN or proxy. Please disconnect from it and refresh the page." ? "You\'re either using a detected VPN server or IP banned for cheating." : nt.errorMessage;');
+    addReplacement('VERSION$1," | ",', `"${vapeName} v1.0.5"," | ",`);
+    addReplacement('if(!nt.canConnect){', 'nt.errorMessage = nt.errorMessage == "Could not join server. You are connected to a VPN or proxy. Please disconnect from it and refresh the page." ? "You\'re either using a detected VPN server or IP banned for cheating." : nt.errorMessage;');
 
-	// DRAWING SETUP
-addReplacement('ut(this,"glintTexture");', '');
-addReplacement('ut(this,"vapeTexture");', '');
+    // DRAWING SETUP
+    addReplacement('ut(this,"glintTexture");', '');
+    addReplacement('ut(this,"vapeTexture");', '');
+    addReplacement('skinManager.loadTextures(),', ',this.loadVape(),');
+    addReplacement('async loadSpritesheet(){', `
+        async loadVape() {
+            this.vapeTexture = await this.loader.loadAsync("https://raw.githubusercontent.com/7GrandDadPGN/VapeForMiniblox/main/assets/logo.png");
+            this.v4Texture = await this.loader.loadAsync("https://raw.githubusercontent.com/7GrandDadPGN/VapeForMiniblox/main/assets/logov4.png");
+        }
+        async loadSpritesheet(){
+    `, true);
 
-addReplacement('skinManager.loadTextures(),', ',this.loadVape(),');
-addReplacement('async loadSpritesheet(){', `
-    async loadVape() {
-        this.vapeTexture = await this.loader.loadAsync("https://raw.githubusercontent.com/7GrandDadPGN/VapeForMiniblox/main/assets/logo.png");
-        this.v4Texture = await this.loader.loadAsync("https://raw.githubusercontent.com/7GrandDadPGN/VapeForMiniblox/main/assets/logov4.png");
-    }
-    async loadSpritesheet(){
-`, true);
+    const packetText = document.createElement("div");
+    packetText.innerText = "Packet v69";
 
-const packetText = document.createElement("div");
-packetText.innerText = "Packet v69";
+    packetText.style.position = "absolute";
+    packetText.style.top = "10px";
+    packetText.style.left = "10px";
+    packetText.style.fontFamily = "Roboto, sans-serif";
+    packetText.style.fontSize = "24px";
+    packetText.style.color = "#00FF00";
+    packetText.style.textShadow = "0 0 10px rgba(0, 255, 0, 0.7)";
+    packetText.style.fontWeight = "bold";
 
-packetText.style.position = "absolute";
-packetText.style.top = "10px";
-packetText.style.left = "10px";
-packetText.style.fontFamily = "Roboto, sans-serif";
-packetText.style.fontSize = "24px";
-packetText.style.color = "#00FF00";
-packetText.style.textShadow = "0 0 10px rgba(0, 255, 0, 0.7)";
-packetText.style.fontWeight = "bold";
+    document.body.appendChild(packetText);
 
-document.body.appendChild(packetText);
+    const link = document.createElement("link");
+    link.href = "https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap";
+    link.rel = "stylesheet";
+    document.head.appendChild(link);
 
-const link = document.createElement("link");
-link.href = "https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap";
-link.rel = "stylesheet";
-document.head.appendChild(link);
+    // TELEPORT FIX
+    addReplacement('player$1.setPositionAndRotation($.x,$.y,$.z,$.yaw,$.pitch),', `
+        noMove = Date.now() + 500;
+        player$1.setPositionAndRotation($.x,$.y,$.z,$.yaw,$.pitch),
+    `, true);
 
-	// TELEPORT FIX
-	addReplacement('player$1.setPositionAndRotation($.x,$.y,$.z,$.yaw,$.pitch),', `
-		noMove = Date.now() + 500;
-		player$1.setPositionAndRotation($.x,$.y,$.z,$.yaw,$.pitch),
-	`, true);
+    addReplacement('COLOR_TOOLTIP_BG,BORDER_SIZE)}', `
+        function drawImage(ctx, img, posX, posY, sizeX, sizeY, color) {
+            if (color) {
+                ctx.fillStyle = color;
+                ctx.fillRect(posX, posY, sizeX, sizeY);
+                ctx.globalCompositeOperation = "destination-in";
+            }
+            ctx.drawImage(img, posX, posY, sizeX, sizeY);
+            if (color) ctx.globalCompositeOperation = "source-over";
+        }
+    `);
 
-	addReplacement('COLOR_TOOLTIP_BG,BORDER_SIZE)}', `
-		function drawImage(ctx, img, posX, posY, sizeX, sizeY, color) {
-			if (color) {
-				ctx.fillStyle = color;
-				ctx.fillRect(posX, posY, sizeX, sizeY);
-				ctx.globalCompositeOperation = "destination-in";
-			}
-			ctx.drawImage(img, posX, posY, sizeX, sizeY);
-			if (color) ctx.globalCompositeOperation = "source-over";
-		}
-	`);
+    // TEXT GUI
+    addReplacement('(this.drawSelectedItemStack(),this.drawHintBox())', `
+        let stringList = [];
+        Object.entries(enabledModules).forEach(([moduleName, isEnabled]) => {
+            if (isEnabled) stringList.push(moduleName);
+        });
 
-	// TEXT GUI
-	addReplacement('(this.drawSelectedItemStack(),this.drawHintBox())', `
-		if (ctx$3 && enabledModules["TextGUI"]) {
-			const colorOffset = (Date.now() / 4000);
-			const posX = 15;
-			const posY = 17;
-			ctx$3.imageSmoothingEnabled = true;
-			ctx$3.imageSmoothingQuality = "high";
-			drawImage(ctx$3, textureManager.vapeTexture.image, posX, posY, 80, 21, \`HSL(\${(colorOffset % 1) * 360}, 100%, 50%)\`);
-			drawImage(ctx$3, textureManager.v4Texture.image, posX + 81, posY + 1, 33, 18);
+        let posX = 10;
+        let posY = 10;
+        let offset = 0;
 
-			let offset = 0;
-			let stringList = [];
-			for(const [module, value] of Object.entries(enabledModules)) {
-				if (!value || module == "TextGUI") continue;
-				stringList.push(module);
-			}
+        if (stringList.length > 0) {
+            ctx$3.fillStyle = "#00FF00";
+            ctx$3.font = "16px Roboto";
+            stringList.forEach(function(moduleName) {
+                ctx$3.fillText(moduleName, posX + 75 + offset, posY + 17);
+                offset += ctx$3.measureText(moduleName).width + 5;
+            });
+        }
+    `);
 
-			stringList.sort(function(a, b) {
-				const compA = ctx$3.measureText(a).width;
-				const compB = ctx$3.measureText(b).width;
-				return compA < compB ? 1 : -1;
-			});
+           // Final code to close out the script properly
+        );
+        const packetText = document.createElement("div");
+        packetText.innerText = "Packet v69";
+        packetText.style.position = "absolute";
+        packetText.style.top = "10px";
+        packetText.style.left = "10px";
+        packetText.style.fontFamily = "Roboto, sans-serif";
+        packetText.style.fontSize = "24px";
+        packetText.style.color = "#00FF00";
+        packetText.style.textShadow = "0 0 10px rgba(0, 255, 0, 0.7)";
+        packetText.style.fontWeight = "bold";
+        document.body.appendChild(packetText);
 
-			stringList.forEach(function(moduleName) {
-				ctx$3.fillText(moduleName, posX + 75 + offset, posY + 17);
-				offset += ctx$3.measureText(moduleName).width + 5;
-			});
-		}
-	`);
+        const link = document.createElement("link");
+        link.href = "https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap";
+        link.rel = "stylesheet";
+        document.head.appendChild(link);
 
-	// MODULE MANAGEMENT
-	let enabledModules = {};
+        // MODULE MANAGEMENT AND FINAL TOUCHES
+        let enabledModules = {};
 
-	function updateModuleStatus() {
-		const packetText = document.querySelector("#packetText");
-		let statusText = "Packet v69\n";
-		for (const [moduleName, isEnabled] of Object.entries(enabledModules)) {
-			if (isEnabled) {
-				statusText += `${moduleName} (ON)\n`;
-			} else {
-				statusText += `${moduleName} (OFF)\n`;
-			}
-		}
-		packetText.innerText = statusText;
-	}
+        function updateModuleStatus() {
+            const packetText = document.querySelector("#packetText");
+            let statusText = "Packet v69\n";
+            for (const [moduleName, isEnabled] of Object.entries(enabledModules)) {
+                if (isEnabled) {
+                    statusText += `${moduleName} (ON)\n`;
+                } else {
+                    statusText += `${moduleName} (OFF)\n`;
+                }
+            }
+            packetText.innerText = statusText;
+        }
 
-	function displayBindPopup(moduleName, isEnabled) {
-		const popup = document.createElement("div");
-		popup.style.position = "absolute";
-		popup.style.bottom = "20px";
-		popup.style.right = "20px";
-		popup.style.backgroundColor = isEnabled ? "green" : "red";
-		popup.style.color = "white";
-		popup.style.padding = "10px";
-		popup.style.borderRadius = "5px";
-		popup.style.fontFamily = "Roboto, sans-serif";
-		popup.style.fontSize = "14px";
-		popup.style.zIndex = "9999";
+        function displayBindPopup(moduleName, isEnabled) {
+            const popup = document.createElement("div");
+            popup.style.position = "absolute";
+            popup.style.bottom = "20px";
+            popup.style.right = "20px";
+            popup.style.backgroundColor = isEnabled ? "green" : "red";
+            popup.style.color = "white";
+            popup.style.padding = "10px";
+            popup.style.borderRadius = "5px";
+            popup.style.fontFamily = "Roboto, sans-serif";
+            popup.style.fontSize = "14px";
+            popup.style.zIndex = "9999";
+            popup.innerText = `${moduleName} has been ${isEnabled ? "enabled" : "disabled"}`;
+            document.body.appendChild(popup);
+            setTimeout(() => {
+                document.body.removeChild(popup);
+            }, 3000);
+        }
 
-		popup.innerText = `${moduleName} has been ${isEnabled ? "enabled" : "disabled"}`;
+        function toggleModule(moduleName) {
+            enabledModules[moduleName] = !enabledModules[moduleName];
+            updateModuleStatus();
+            displayBindPopup(moduleName, enabledModules[moduleName]);
+        }
 
-		document.body.appendChild(popup);
-
-		setTimeout(() => {
-			document.body.removeChild(popup);
-		}, 3000);
-	}
-
-	function toggleModule(moduleName) {
-		enabledModules[moduleName] = !enabledModules[moduleName];
-		updateModuleStatus();
-		displayBindPopup(moduleName, enabledModules[moduleName]);
-	}
-
+        // FINALLY: CALLING THE MODULE SCRIPT EXECUTION
+        modifyCode(''); // This will run the script injection with the modifications applied.
+    })();
 })();
-
 	// SKIN
 	addReplacement('ClientSocket.on("CPacketSpawnPlayer",$=>{const et=j.world.getPlayerById($.id);', `
 		if ($.socketId === player$1.socketId && enabledModules["AntiBan"]) {
